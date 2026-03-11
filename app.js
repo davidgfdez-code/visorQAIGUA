@@ -10,14 +10,15 @@ const CENTER = [41.045, 0.93]; // Vista inicial centrada entre Mont-roig y Miami
 const START_ZOOM = 12; // Zoom inicial
 
 const INDICADORS = [
-  { key: "E. coli" },
-  { key: "Clor lliure residual" },
-  { key: "Terbolesa" },
-  { key: "Nitrats" },
+  { key: "Microbiologia" },
+  { key: "Organolèptic" },
   { key: "pH" },
+  { key: "Conductivitat" },
+  { key: "Clor lliure" }, 
   { key: "Duresa" },
-  { key: "Conductivitat" }
-];
+  { key: "Clorurs" },
+  { key: "Nitrats" }
+    ];
 
 function normalizeText(s) {
   return String(s || "")
@@ -256,45 +257,6 @@ function autoZoomToSector(entry, anchorLatLng) {
   return "panfit";
 }
 
-function selectEntry(entry, clickLatLng) {
-  clearSelection();
-
-  const files = resultsBySector.get(entry.sectorKey) || [];
-  const estat = calcularSemaforSector(files);
- 
-  const sectorCenter = entry.bounds ? entry.bounds.getCenter() : null;
-  if (!sectorCenter) return;
-
-  const popupLatLng = sectorCenter;
-
-  const openPopup = () => {
-    popupActiu = L.popup({
-      closeButton: true,
-      autoPan: false,
-      maxWidth: 360
-    })
-      .setLatLng(popupLatLng)
-      .setContent(buildPopupHTML(entry.sectorRaw, estat, files))
-      .openOn(map);
-  };
-
-  const moved = autoZoomToSector(entry, popupLatLng);
-
-  if (moved === "none") {
-    openPopup();
-    return;
-  }
-
-  if (moved === "pan") {
-    map.once("moveend", openPopup);
-    return;
-  }
-
-  map.once("moveend", () => {
-    map.once("moveend", openPopup);
-  });
-}
-
 function showUserError(message) { // Errores UI estilo
   const el = document.createElement("div");
   el.setAttribute("role", "alert");
@@ -373,10 +335,17 @@ const waterDivIcon = L.divIcon({
   className: "drop-wrap",
   html: `<img class="drop-img" src="${DROP_ICON_URL}" alt="">`,
   iconSize: [28, 34],
-  iconAnchor: [14, 34]
+  iconAnchor: [19, 45]
 });
 
 let clickMarker = null;
+
+function clearClickDrop() {
+  if (clickMarker) {
+    map.removeLayer(clickMarker);
+    clickMarker = null;
+  }
+}
 
 function showClickDrop(latlng) {
   if (clickMarker) {
@@ -551,41 +520,31 @@ function selectEntry(entry, clickLatLng) {
   const far = map.getZoom() <= 13;
   const popupLatLng = (far || !clickLatLng) ? sectorCenter : clickLatLng;
 
-  const openPopup = () => {
+  const headerH = document.querySelector(".header")?.offsetHeight || 0;
+  const pad = 12;
+  const extraTop = 20;
 
-  clearClickDrop(); // ← elimina la gota justo antes de abrir el popup
+  setTimeout(() => {
+    clearClickDrop(); // ← elimina la gota justo antes de abrir el popup
 
     popupActiu = L.popup({
-     closeButton: true,
-      autoPan: false,
-      maxWidth: 360
+      closeButton: true,
+      autoPan: true,
+      keepInView: true,
+      maxWidth: 360,
+      autoPanPaddingTopLeft: [pad, headerH + pad + extraTop],
+      autoPanPaddingBottomRight: [pad, pad]
     })
     .setLatLng(popupLatLng)
     .setContent(buildPopupHTML(entry.sectorRaw, estat, files))
     .openOn(map);
-  };
-
-  const moved = autoZoomToSector(entry, popupLatLng);
-
-  if (moved === "none") {
-    openPopup();
-    return;
-  }
-
-  if (moved === "fit" || moved === "pan") {
-    map.once("moveend", openPopup);
-    return;
-  }
-
-  map.once("moveend", () => {
-    map.once("moveend", openPopup);
-  });
+  }, 1000);
 }
 
 map.on("click", (e) => {
   
   showClickDrop(e.latlng);
-  
+
   const lngLat = [e.latlng.lng, e.latlng.lat];
 
   const candidates = sectorsIndex.filter((s) => s.bounds.contains(e.latlng));
